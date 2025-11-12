@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Deepfake Detective – Digital Detective</title>
+
+<style>
+:root{
+  --phone-bg:#000;
+  --text:#fff;
+  --main-red-start:#ff4b2b;
+  --main-red-end:#462f2f;
+  --font:"Poppins","Inter","Segoe UI",sans-serif;
+}
+
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{
+  height:100%;width:100%;
+  display:flex;justify-content:center;align-items:center;
+  background:#fff;font-family:var(--font);
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ===== Phone Frame ===== */
+.phone-frame{
+  width:375px;height:700px;background:var(--phone-bg);
+  border-radius:24px;box-shadow:0 8px 35px rgba(0,0,0,0.3);
+  display:flex;flex-direction:column;overflow:hidden;position:relative;
+}
+.phone-frame::before{
+  content:"";position:absolute;inset:0;
+  background:radial-gradient(circle at 30% 20%,#1a0000,#000 80%);
+  animation:glowShift 18s ease-in-out infinite alternate;z-index:0;
+}
+@keyframes glowShift{
+  0%{background-position:left top;}
+  100%{background-position:right bottom;}
+}
+
+/* ===== Top Bar ===== */
+.topbar{
+  padding:1rem;display:flex;justify-content:flex-start;
+  z-index:1;
+}
+.back-btn{
+  background:linear-gradient(135deg,var(--main-red-start),var(--main-red-end));
+  border:none;color:var(--text);padding:0.5rem 1rem;
+  border-radius:8px;font-size:0.9rem;cursor:pointer;
+  transition:0.25s ease;box-shadow:0 0 15px rgba(255,0,0,0.35);z-index:1;
+}
+.back-btn:hover{transform:scale(1.05);filter:brightness(1.2);}
+
+/* ===== Main Section ===== */
+.main{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  text-align:center;gap:1rem;z-index:1;padding:1rem;
+}
+h1{
+  font-size:1.3rem;
+  background:linear-gradient(90deg,var(--main-red-start),var(--main-red-end));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.subtitle{
+  font-size:0.85rem;color:#ccc;max-width:320px;line-height:1.4;margin-bottom:0.5rem;
+}
+.upload-area{
+  background:rgba(255,255,255,0.08);
+  border:2px dashed rgba(255,255,255,0.25);
+  border-radius:12px;width:85%;max-width:280px;
+  height:180px;display:flex;justify-content:center;align-items:center;
+  flex-direction:column;color:#999;cursor:pointer;
+  transition:0.3s ease;
+}
+.upload-area:hover{background:rgba(255,255,255,0.15);}
+.upload-area input{display:none;}
+.upload-text{font-size:0.8rem;margin-top:0.4rem;}
+
+/* ===== Analyze Button ===== */
+.analyze-btn{
+  margin-top:1.2rem;
+  padding:0.8rem 1.2rem;width:85%;
+  border:none;border-radius:10px;
+  color:var(--text);font-weight:600;font-size:0.95rem;letter-spacing:0.3px;
+  background:linear-gradient(145deg,var(--main-red-start),var(--main-red-end));
+  box-shadow:0 0 20px rgba(255,0,0,0.45);
+  cursor:pointer;transition:0.3s ease;
+}
+.analyze-btn:hover{transform:translateY(-3px);filter:brightness(1.15);}
+
+/* ===== Result Card ===== */
+.result-card{
+  display:none;flex-direction:column;align-items:center;
+  text-align:center;padding:1rem;margin-top:1rem;width:85%;
+  max-width:300px;border-radius:12px;
+  box-shadow:0 2px 12px rgba(0,0,0,0.5);
+}
+.result-card.safe{background:rgba(37,211,102,0.1);border:2px solid #25d366;color:#25d366;}
+.result-card.warning{background:#200;border:2px solid #ff4b2b;color:#ff4b2b;}
+.status{font-size:1.2rem;font-weight:700;margin-bottom:0.3rem;}
+.msg-text{font-size:0.8rem;line-height:1.3;opacity:0.9;}
+
+@media(max-width:420px){
+  body{background:var(--phone-bg);}
+  .phone-frame{width:100%;height:100%;border-radius:0;box-shadow:none;}
+}
+</style>
+</head>
+
+<body>
+  <div class="phone-frame">
+    <header class="topbar">
+      <button class="back-btn" id="backBtn">⬅ Back</button>
+    </header>
+
+    <main class="main">
+      <h1>Deepfake Detective</h1>
+      <p class="subtitle">Upload a facial video or image to analyze for possible manipulation or AI synthesis.</p>
+
+      <!-- Upload area -->
+      <label class="upload-area" id="uploadArea">
+        <input type="file" id="fileInput" accept="image/*,video/*" />
+        <div>📁 Choose File or Drop Here</div>
+        <div class="upload-text">Supported formats: JPG, PNG, MP4</div>
+      </label>
+
+      <button class="analyze-btn" id="analyzeBtn">Analyze File</button>
+
+      <!-- Result card -->
+      <div id="resultCard" class="result-card">
+        <div class="status" id="resultStatus">SAFE</div>
+        <div class="msg-text" id="resultMsg">No deepfake detected.</div>
+      </div>
+    </main>
+  </div>
+
+<script>
+const N8N_DEEPFAKE_URL = "https://ailoveuuuuuuuu.app.n8n.cloud/webhook/deepfake-detect"; // your n8n endpoint
+
+// 🔙 Back returns to dashboard
+document.getElementById("backBtn").onclick = () => {
+  window.location.href = "index.html";
+};
+
+// --- File upload logic ---
+const uploadArea = document.getElementById("uploadArea");
+const fileInput = document.getElementById("fileInput");
+uploadArea.addEventListener("click",()=>fileInput.click());
+
+// if user drops file
+uploadArea.addEventListener("dragover",(e)=>{e.preventDefault();uploadArea.style.background="rgba(255,255,255,0.2)";});
+uploadArea.addEventListener("dragleave",()=>{uploadArea.style.background="rgba(255,255,255,0.08)";});
+uploadArea.addEventListener("drop",(e)=>{
+  e.preventDefault();
+  uploadArea.style.background="rgba(255,255,255,0.08)";
+  const file = e.dataTransfer.files[0];
+  if(file){ fileInput.files = e.dataTransfer.files; }
+});
+
+document.getElementById("analyzeBtn").addEventListener("click", async ()=>{
+  const file = fileInput.files[0];
+  if(!file){ alert("Please select an image or video file first."); return; }
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const analyzeBtn = document.getElementById("analyzeBtn");
+  analyzeBtn.disabled = true;
+  analyzeBtn.textContent = "Analyzing…";
+
+  const resultCard = document.getElementById("resultCard");
+  resultCard.style.display = "none";
+
+  try{
+    const res = await fetch(N8N_DEEPFAKE_URL,{ method:"POST", body:formData });
+    if(!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    showResult(data);
+  }catch(err){
+    alert("Failed to analyze: " + err.message);
+  }finally{
+    analyzeBtn.disabled = false;
+    analyzeBtn.textContent = "Analyze File";
+  }
+});
+
+function showResult(data){
+  const isWarning = data.status && data.status.toLowerCase()==="warning";
+  const card = document.getElementById("resultCard");
+  const status = document.getElementById("resultStatus");
+  const msg = document.getElementById("resultMsg");
+
+  card.className = "result-card " + (isWarning?"warning":"safe");
+  status.textContent = isWarning ? "⚠️ DEEPFAKE SUSPECTED" : "✅ AUTHENTIC";
+  msg.textContent = data.reply || (isWarning ? "Potential deepfake detected." : "No significant AI artifacts found.");
+  card.style.display = "flex";
+}
+</script>
+</body>
+</html>
